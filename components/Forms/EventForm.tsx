@@ -1,11 +1,13 @@
-"use client";
-
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
-export function EventForm() {
+type EventFormProps = {
+	action: (formData: FormData) => void | Promise<void>;
+};
+
+export function EventForm({ action }: EventFormProps) {
 	return (
-		<form className="space-y-5" onSubmit={(event) => event.preventDefault()}>
+		<form className="space-y-5" action={action}>
 			<div className="space-y-2">
 				<label htmlFor="name" className="block text-sm font-medium">
 					Event name
