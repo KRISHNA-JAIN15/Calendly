@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 
 export default function Home() {
   return (
@@ -12,6 +13,21 @@ export default function Home() {
           height={20}
           priority
         />
+        <div className="flex w-full items-center justify-end">
+          <Show when="signed-out">
+            <SignInButton mode="modal">
+              <button
+                type="button"
+                className="rounded-full border border-black/10 px-3 py-1 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-100 dark:border-white/20 dark:text-zinc-100 dark:hover:bg-zinc-900"
+              >
+                Sign in
+              </button>
+            </SignInButton>
+          </Show>
+          <Show when="signed-in">
+            <UserButton />
+          </Show>
+        </div>
         <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
           <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
             To get started, edit the page.tsx file.
