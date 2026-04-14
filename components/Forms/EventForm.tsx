@@ -63,7 +63,7 @@ export function EventForm({ action }: EventFormProps) {
 	};
 
 	return (
-		<form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
+		<form className="space-y-6" noValidate onSubmit={handleSubmit(onSubmit)}>
 			<div className="space-y-2">
 				<label htmlFor="name" className="block text-sm font-medium">
 					Event name
@@ -107,6 +107,7 @@ export function EventForm({ action }: EventFormProps) {
 					min={5}
 					step={5}
 					aria-invalid={!!errors.durationInMinutes}
+					className={errors.durationInMinutes ? "border-red-600 focus-visible:border-red-600 focus-visible:ring-red-500/20" : undefined}
 					{...register("durationInMinutes")}
 				/>
 				{errors.durationInMinutes?.message ? (
