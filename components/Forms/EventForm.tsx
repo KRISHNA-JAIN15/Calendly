@@ -11,6 +11,14 @@ import { Textarea } from "@/components/ui/textarea";
 
 type EventFormProps = {
 	action: (formData: FormData) => void | Promise<void>;
+	initialValues?: {
+		name: string;
+		slug: string;
+		durationInMinutes: number;
+		description?: string | null;
+		isActive: boolean;
+	};
+	submitLabel?: string;
 };
 
 const eventFormSchema = z.object({
@@ -28,7 +36,7 @@ const eventFormSchema = z.object({
 type EventFormInput = z.input<typeof eventFormSchema>;
 type EventFormValues = z.output<typeof eventFormSchema>;
 
-export function EventForm({ action }: EventFormProps) {
+export function EventForm({ action, initialValues, submitLabel = "Save event" }: EventFormProps) {
 	const [isPending, startTransition] = useTransition();
 
 	const {
@@ -38,11 +46,11 @@ export function EventForm({ action }: EventFormProps) {
 	} = useForm<EventFormInput, unknown, EventFormValues>({
 		resolver: zodResolver(eventFormSchema),
 		defaultValues: {
-			name: "",
-			slug: "",
-			durationInMinutes: 30,
-			description: "",
-			isActive: true,
+			name: initialValues?.name ?? "",
+			slug: initialValues?.slug ?? "",
+			durationInMinutes: initialValues?.durationInMinutes ?? 30,
+			description: initialValues?.description ?? "",
+			isActive: initialValues?.isActive ?? true,
 		},
 	});
 
@@ -148,7 +156,7 @@ export function EventForm({ action }: EventFormProps) {
 					<Link href="/events">Cancel</Link>
 				</Button>
 				<Button type="submit" disabled={isPending}>
-					{isPending ? "Saving..." : "Save event"}
+					{isPending ? "Saving..." : submitLabel}
 				</Button>
 			</div>
 		</form>

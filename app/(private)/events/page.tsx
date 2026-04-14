@@ -30,6 +30,26 @@ async function toggleEventActive(formData: FormData) {
 	revalidatePath("/events");
 }
 
+async function deleteEvent(formData: FormData) {
+	"use server";
+
+	const { userId } = await auth();
+	if (!userId) {
+		return;
+	}
+
+	const eventId = String(formData.get("eventId") ?? "");
+	if (!eventId) {
+		return;
+	}
+
+	await db
+		.delete(EventTable)
+		.where(and(eq(EventTable.id, eventId), eq(EventTable.clerkUserId, userId)));
+
+	revalidatePath("/events");
+}
+
 export default async function EventsPage() {
 	const { userId } = await auth();
 	if (!userId) {
@@ -97,6 +117,17 @@ export default async function EventsPage() {
 									{event.description || "No description"}
 								</p>
 								<p className="text-sm">Duration: {event.durationInMinutes} min</p>
+								<div className="flex items-center gap-2 pt-2">
+									<Button asChild size="sm" variant="outline">
+										<Link href={`/events/${event.id}/edit`}>Edit</Link>
+									</Button>
+									<form action={deleteEvent}>
+										<input type="hidden" name="eventId" value={event.id} />
+										<Button type="submit" size="sm" variant="destructive">
+											Delete
+										</Button>
+									</form>
+								</div>
 							</CardContent>
 						</Card>
 					))}
