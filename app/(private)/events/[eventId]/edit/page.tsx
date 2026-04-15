@@ -4,7 +4,6 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db/db";
 import { EventTable } from "@/db/schema";
 import { EventForm } from "@/components/Forms/EventForm";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 type EditEventPageProps = {
 	params: Promise<{ eventId: string }>;
@@ -91,26 +90,23 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
 	}
 
 	return (
-		<div className="mx-auto w-full max-w-2xl">
-			<Card>
-				<CardHeader>
-					<CardTitle>Edit event type</CardTitle>
-					<CardDescription>Update this event and save your changes.</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<EventForm
-						action={updateEvent}
-						submitLabel="Save changes"
-						initialValues={{
-							name: event.name,
-							slug: event.slug,
-							description: event.description,
-							durationInMinutes: event.durationInMinutes,
-							isActive: event.isActive,
-						}}
-					/>
-				</CardContent>
-			</Card>
+		<div className="mx-auto w-full max-w-3xl space-y-4">
+			<div className="space-y-1">
+				<h1 className="text-2xl font-semibold tracking-tight">Edit event type</h1>
+				<p className="text-sm text-muted-foreground">Update this event and save your changes.</p>
+			</div>
+
+			<EventForm
+				action={updateEvent}
+				submitLabel="Save changes"
+				initialValues={{
+					name: event.name,
+					slug: event.slug,
+					description: event.description,
+					durationInMinutes: event.durationInMinutes,
+					isActive: event.isActive,
+				}}
+			/>
 		</div>
 	);
 }

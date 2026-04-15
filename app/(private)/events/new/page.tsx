@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { db } from "@/db/db";
 import { EventTable } from "@/db/schema";
 import { EventForm } from "@/components/Forms/EventForm";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 type SaveEventResult = {
 	error?: string;
@@ -59,18 +58,15 @@ async function createEvent(formData: FormData): Promise<SaveEventResult | void> 
 
 export default function NewEventPage() {
 	return (
-		<div className="mx-auto w-full max-w-2xl">
-			<Card>
-				<CardHeader>
-					<CardTitle>Create event type</CardTitle>
-					<CardDescription>
-						Set up a new booking link with duration and availability details.
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-						<EventForm action={createEvent} />
-				</CardContent>
-			</Card>
+		<div className="mx-auto w-full max-w-3xl space-y-4">
+			<div className="space-y-1">
+				<h1 className="text-2xl font-semibold tracking-tight">Create event type</h1>
+				<p className="text-sm text-muted-foreground">
+					Set up a new booking link with duration and event details.
+				</p>
+			</div>
+
+			<EventForm action={createEvent} />
 		</div>
 	);
 }

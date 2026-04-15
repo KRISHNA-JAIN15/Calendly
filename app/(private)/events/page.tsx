@@ -84,65 +84,102 @@ export default async function EventsPage() {
 		.where(eq(EventTable.clerkUserId, userId))
 		.orderBy(desc(EventTable.createdAt));
 
+	const totalEvents = events.length;
+	const activeEvents = events.filter((event) => event.isActive).length;
+	const inactiveEvents = totalEvents - activeEvents;
+
 	return (
-		<div className="space-y-6">
-			<div className="space-y-4">
-				<div className="flex items-center justify-between">
-					<h1 className="text-2xl font-semibold">Events</h1>
+		<div className="space-y-8">
+			<section className="space-y-4">
+				<div className="flex flex-wrap items-end justify-between gap-3">
+					<div className="space-y-1">
+						<h1 className="text-3xl font-semibold tracking-tight">Events</h1>
+						<p className="text-sm text-muted-foreground">
+							Manage your event types and keep booking links up to date.
+						</p>
+					</div>
 					<Button asChild>
 						<Link href="/events/new">New event</Link>
 					</Button>
 				</div>
+
+				<div className="grid gap-3 sm:grid-cols-3">
+					<div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/50">
+						<p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Total events</p>
+						<p className="mt-1 text-2xl font-semibold tracking-tight">{totalEvents}</p>
+					</div>
+					<div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/50">
+						<p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Active</p>
+						<p className="mt-1 text-2xl font-semibold tracking-tight">{activeEvents}</p>
+					</div>
+					<div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/50">
+						<p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Inactive</p>
+						<p className="mt-1 text-2xl font-semibold tracking-tight">{inactiveEvents}</p>
+					</div>
+				</div>
+
 				<ProfileShareLink shareLink={profileShareLink} />
-			</div>
+			</section>
 
 			{events.length === 0 ? (
-				<Card>
+				<Card className="border-zinc-200/80 dark:border-zinc-800">
 					<CardHeader>
 						<CardTitle>No events yet</CardTitle>
 						<CardDescription>Create your first event type to start sharing booking links.</CardDescription>
 					</CardHeader>
 				</Card>
 			) : (
-				<div className="grid gap-4">
-					{events.map((event) => (
-						<Card key={event.id}>
-							<CardHeader>
-								<div className="flex items-center justify-between gap-3">
-									<CardTitle>{event.name}</CardTitle>
-									<form action={toggleEventActive}>
-										<input type="hidden" name="eventId" value={event.id} />
-										<input type="hidden" name="nextIsActive" value={String(!event.isActive)} />
-										<button
-											type="submit"
-											className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-												event.isActive
-													? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300"
-													: "bg-zinc-200 text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300"
-											}`}
-										>
-											<span
-												className={`size-2 rounded-full ${event.isActive ? "bg-emerald-600" : "bg-zinc-500"}`}
-											/>
-											{event.isActive ? "Active" : "Inactive"}
-										</button>
-									</form>
-								</div>
-								<CardDescription>{event.durationInMinutes} min</CardDescription>
-							</CardHeader>
-							<CardContent className="space-y-2">
-								<p className="text-sm text-muted-foreground">
-									{event.description || "No description"}
-								</p>
-								<div className="flex items-center gap-2 pt-2">
-									<Button asChild size="sm" variant="outline">
-										<Link href={`/events/${event.id}/edit`}>Edit</Link>
-									</Button>
-									<DeleteEventAlert eventId={event.id} action={deleteEvent} />
-								</div>
-							</CardContent>
-						</Card>
-					))}
+				<div className="grid gap-4 md:grid-cols-2">
+					{events.map((event) => {
+						const eventPublicPath = userProfile?.publicSlug
+							? `/${userProfile.publicSlug}/${event.slug}`
+							: `/${event.slug}`;
+
+						return (
+							<Card key={event.id} className="border-zinc-200/80 dark:border-zinc-800">
+								<CardHeader className="space-y-3">
+									<div className="flex items-start justify-between gap-3">
+										<div className="space-y-1">
+											<CardTitle className="text-lg">{event.name}</CardTitle>
+											<CardDescription>{event.durationInMinutes} min</CardDescription>
+										</div>
+										<form action={toggleEventActive}>
+											<input type="hidden" name="eventId" value={event.id} />
+											<input type="hidden" name="nextIsActive" value={String(!event.isActive)} />
+											<button
+												type="submit"
+												className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+													event.isActive
+														? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300"
+														: "bg-zinc-200 text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300"
+												}`}
+											>
+												<span
+													className={`size-2 rounded-full ${event.isActive ? "bg-emerald-600" : "bg-zinc-500"}`}
+												/>
+												{event.isActive ? "Active" : "Inactive"}
+											</button>
+										</form>
+									</div>
+
+									<p className="rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 font-mono text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+										{eventPublicPath}
+									</p>
+								</CardHeader>
+								<CardContent className="space-y-4">
+									<p className="text-sm text-muted-foreground">
+										{event.description || "No description"}
+									</p>
+									<div className="flex items-center gap-2 pt-1">
+										<Button asChild size="sm" variant="outline">
+											<Link href={`/events/${event.id}/edit`}>Edit</Link>
+										</Button>
+										<DeleteEventAlert eventId={event.id} action={deleteEvent} />
+									</div>
+								</CardContent>
+							</Card>
+						);
+					})}
 				</div>
 			)}
 		</div>
