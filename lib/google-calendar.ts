@@ -30,6 +30,16 @@ type CreateCalendarEventInput = {
   eventName: string;
 };
 
+type GoogleApiErrorResponse = {
+  error?: {
+    message?: string;
+    errors?: Array<{
+      reason?: string;
+      message?: string;
+    }>;
+  };
+};
+
 export async function getCalendarEventTimes(
   clerkUserId: string,
   { start, end }: CalendarRange
@@ -224,32 +234,42 @@ export async function createCalendarEvent({
   const primaryGuestDisplay =
     normalizedGuests[0].name?.trim() || normalizedGuests[0].email;
 
-  const calendarEvent = await google.calendar("v3").events.insert({
-    calendarId: "primary",
-    auth: oauthClient,
-    sendUpdates: "all",
-    requestBody: {
-      attendees: [
-        ...normalizedGuests.map((guest) => ({
-          email: guest.email,
-          displayName: guest.name?.trim() || undefined,
-        })),
-        {
-          email: hostEmail,
-          displayName: hostName,
-          responseStatus: "accepted",
+  let calendarEvent;
+
+  try {
+    calendarEvent = await google.calendar("v3").events.insert({
+      calendarId: "primary",
+      auth: oauthClient,
+      sendUpdates: "all",
+      requestBody: {
+        attendees: [
+          ...normalizedGuests.map((guest) => ({
+            email: guest.email,
+            displayName: guest.name?.trim() || undefined,
+          })),
+          {
+            email: hostEmail,
+            displayName: hostName,
+            responseStatus: "accepted",
+          },
+        ],
+        description: guestNotes ? `Additional Details: ${guestNotes}` : undefined,
+        start: {
+          dateTime: startTime.toISOString(),
         },
-      ],
-      description: guestNotes ? `Additional Details: ${guestNotes}` : undefined,
-      start: {
-        dateTime: startTime.toISOString(),
+        end: {
+          dateTime: addMinutes(startTime, durationInMinutes).toISOString(),
+        },
+        summary: `${primaryGuestDisplay} + ${hostName}: ${eventName}`,
       },
-      end: {
-        dateTime: addMinutes(startTime, durationInMinutes).toISOString(),
-      },
-      summary: `${primaryGuestDisplay} + ${hostName}: ${eventName}`,
-    },
-  });
+    });
+  } catch (error) {
+    const details = getGoogleApiErrorDetails(error);
+    const statusPrefix = details.status ? `[${details.status}] ` : "";
+    const reasonSuffix = details.reason ? ` (${details.reason})` : "";
+
+    throw new Error(`${statusPrefix}${details.message}${reasonSuffix}`);
+  }
 
   return calendarEvent.data;
 }
@@ -328,4 +348,28 @@ function normalizeGuests({
   }
 
   return Array.from(dedupedGuests.values());
+}
+
+function getGoogleApiErrorDetails(error: unknown) {
+  const errorLike = error as {
+    message?: string;
+    response?: {
+      status?: number;
+      data?: GoogleApiErrorResponse;
+    };
+  };
+
+  const responseError = errorLike.response?.data?.error;
+  const reason = responseError?.errors?.[0]?.reason;
+  const message =
+    responseError?.message ??
+    responseError?.errors?.[0]?.message ??
+    errorLike.message ??
+    "Unknown Google Calendar API error";
+
+  return {
+    status: errorLike.response?.status,
+    message,
+    reason,
+  };
 }

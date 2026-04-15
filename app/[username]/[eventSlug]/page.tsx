@@ -22,7 +22,48 @@ type PublicEventPageProps = {
   params: Promise<{ username: string; eventSlug: string }>;
 };
 
+type GoogleApiErrorResponse = {
+  error?: {
+    message?: string;
+    errors?: Array<{
+      reason?: string;
+      message?: string;
+    }>;
+  };
+};
+
+type ParsedGoogleActionError = {
+  status?: number;
+  message: string;
+  reason?: string;
+};
+
 const AVAILABILITY_WINDOW_DAYS = 60;
+
+function parseGoogleActionError(error: unknown): ParsedGoogleActionError {
+  const errorLike = error as {
+    message?: string;
+    response?: {
+      status?: number;
+      data?: GoogleApiErrorResponse;
+    };
+  };
+
+  const responseError = errorLike.response?.data?.error;
+  const message =
+    responseError?.message ??
+    responseError?.errors?.[0]?.message ??
+    errorLike.message ??
+    "Unknown error";
+
+  const statusFromMessage = message.match(/^\[(\d{3})\]/)?.[1];
+
+  return {
+    status: errorLike.response?.status ?? (statusFromMessage ? Number(statusFromMessage) : undefined),
+    message,
+    reason: responseError?.errors?.[0]?.reason,
+  };
+}
 
 export default async function PublicEventPage({
   params,
@@ -228,8 +269,8 @@ export default async function PublicEventPage({
         await db.delete(BookingTable).where(eq(BookingTable.id, bookingId));
       }
 
-      const message = error instanceof Error ? error.message : "";
-      const normalizedMessage = message.toLowerCase();
+      const errorDetails = parseGoogleActionError(error);
+      const normalizedMessage = errorDetails.message.toLowerCase();
 
       if (normalizedMessage.includes("google account is not connected")) {
         return {
@@ -239,12 +280,45 @@ export default async function PublicEventPage({
       }
 
       if (
+        errorDetails.status === 401 ||
+        normalizedMessage.includes("invalid_grant") ||
+        normalizedMessage.includes("invalid credentials")
+      ) {
+        return {
+          error:
+            "Google Calendar authorization expired. Please reconnect Google Calendar and try again.",
+        };
+      }
+
+      if (
+        errorDetails.status === 403 ||
         normalizedMessage.includes("insufficient") ||
-        normalizedMessage.includes("forbidden")
+        normalizedMessage.includes("forbidden") ||
+        normalizedMessage.includes("accessnotconfigured")
       ) {
         return {
           error:
             "Google Calendar permissions are incomplete. Please reconnect Google and grant calendar access.",
+        };
+      }
+
+      if (
+        normalizedMessage.includes("access_denied") ||
+        normalizedMessage.includes("unauthorized_client")
+      ) {
+        return {
+          error:
+            "Google blocked this authorization. If OAuth consent is in testing mode, add this Google account as a Test User and reconnect.",
+        };
+      }
+
+      if (
+        normalizedMessage.includes("quota") ||
+        normalizedMessage.includes("rate limit")
+      ) {
+        return {
+          error:
+            "Google Calendar rate limit reached. Please wait a minute and try again.",
         };
       }
 
@@ -255,8 +329,14 @@ export default async function PublicEventPage({
         };
       }
 
+      console.error("Calendar invite creation failed", {
+        status: errorDetails.status,
+        reason: errorDetails.reason,
+        message: errorDetails.message,
+      });
+
       return {
-        error: "Could not create the calendar invite. Please pick another slot.",
+        error: `Could not create the calendar invite: ${errorDetails.message}`,
       };
     }
 
