@@ -25,10 +25,20 @@ type CreateCalendarEventInput = {
   guestName?: string;
   guestEmail?: string;
   guests?: CalendarGuest[];
+  bookingId?: string;
   startTime: Date;
   guestNotes?: string | null;
   durationInMinutes: number;
   eventName: string;
+};
+
+type DeleteCalendarEventForBookingInput = {
+  clerkUserId: string;
+  bookingId: string;
+  startTime?: Date;
+  endTime?: Date;
+  inviteeEmail?: string;
+  eventName?: string;
 };
 
 type GoogleApiErrorResponse = {
@@ -211,6 +221,7 @@ export async function createCalendarEvent({
   guestName,
   guestEmail,
   guests,
+  bookingId,
   startTime,
   guestNotes,
   durationInMinutes,
@@ -263,6 +274,13 @@ export async function createCalendarEvent({
           dateTime: addMinutes(startTime, durationInMinutes).toISOString(),
         },
         summary: `${primaryGuestDisplay} + ${hostName}: ${eventName}`,
+        extendedProperties: bookingId
+          ? {
+              private: {
+                bookingId,
+              },
+            }
+          : undefined,
         conferenceData: {
           createRequest: {
             requestId: randomUUID(),
@@ -282,6 +300,94 @@ export async function createCalendarEvent({
   }
 
   return calendarEvent.data;
+}
+
+export async function deleteCalendarEventForBooking({
+  clerkUserId,
+  bookingId,
+  startTime,
+  endTime,
+  inviteeEmail,
+  eventName,
+}: DeleteCalendarEventForBookingInput) {
+  const oauthClient = await getOAuthClient(clerkUserId);
+  const calendarClient = google.calendar("v3");
+
+  const eventIdsToDelete = new Set<string>();
+
+  try {
+    const linkedEvents = await calendarClient.events.list({
+      calendarId: "primary",
+      auth: oauthClient,
+      privateExtendedProperty: [`bookingId=${bookingId}`],
+      singleEvents: true,
+      maxResults: 50,
+    });
+
+    for (const event of linkedEvents.data.items ?? []) {
+      if (event.id) {
+        eventIdsToDelete.add(event.id);
+      }
+    }
+  } catch {
+    // Fall back to time-range matching below.
+  }
+
+  if (eventIdsToDelete.size === 0 && startTime && endTime) {
+    const fallbackEvents = await calendarClient.events.list({
+      calendarId: "primary",
+      auth: oauthClient,
+      eventTypes: ["default"],
+      singleEvents: true,
+      timeMin: new Date(startTime.getTime() - 60 * 60 * 1000).toISOString(),
+      timeMax: new Date(endTime.getTime() + 60 * 60 * 1000).toISOString(),
+      maxResults: 100,
+    });
+
+    for (const event of fallbackEvents.data.items ?? []) {
+      if (!event.id || !event.start?.dateTime || !event.end?.dateTime) {
+        continue;
+      }
+
+      const eventStart = new Date(event.start.dateTime);
+      const eventEnd = new Date(event.end.dateTime);
+
+      const startMatches = Math.abs(eventStart.getTime() - startTime.getTime()) < 60_000;
+      const endMatches = Math.abs(eventEnd.getTime() - endTime.getTime()) < 60_000;
+
+      const attendeeMatches = inviteeEmail
+        ?
+          event.attendees?.some(
+            (attendee) => attendee.email?.toLowerCase() === inviteeEmail.toLowerCase()
+          ) ?? false
+        : true;
+
+      const summaryMatches = eventName
+        ? event.summary?.toLowerCase().includes(eventName.toLowerCase()) ?? false
+        : true;
+
+      if (startMatches && endMatches && attendeeMatches && summaryMatches) {
+        eventIdsToDelete.add(event.id);
+      }
+    }
+  }
+
+  for (const eventId of eventIdsToDelete) {
+    try {
+      await calendarClient.events.delete({
+        calendarId: "primary",
+        auth: oauthClient,
+        eventId,
+        sendUpdates: "all",
+      });
+    } catch (error) {
+      const details = getGoogleApiErrorDetails(error);
+      const statusPrefix = details.status ? `[${details.status}] ` : "";
+      const reasonSuffix = details.reason ? ` (${details.reason})` : "";
+
+      throw new Error(`${statusPrefix}${details.message}${reasonSuffix}`);
+    }
+  }
 }
 
 async function getOAuthClient(clerkUserId: string) {

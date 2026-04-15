@@ -21,6 +21,9 @@ export function AppNavbar() {
               <Button asChild variant="ghost" size="sm">
                 <Link href="/schedule">Schedule</Link>
               </Button>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/meetings">Meetings</Link>
+              </Button>
             </nav>
           </Show>
         </div>

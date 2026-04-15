@@ -1,6 +1,10 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-const isPrivateRoute = createRouteMatcher(["/events(.*)", "/schedule(.*)"]);
+const isPrivateRoute = createRouteMatcher([
+  "/events(.*)",
+  "/schedule(.*)",
+  "/meetings(.*)",
+]);
 
 export default clerkMiddleware(async (auth, req) => {
   await auth();

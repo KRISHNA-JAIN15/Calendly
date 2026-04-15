@@ -254,8 +254,13 @@ export default async function PublicEventPage({
     }
 
     try {
+      if (!bookingId) {
+        return { error: "Could not save this booking. Please try again." };
+      }
+
       await createCalendarEvent({
         clerkUserId: event.clerkUserId,
+        bookingId,
         guestName: payload.inviteeName,
         guestEmail: payload.inviteeEmail,
         guests: additionalGuestEmails.map((email) => ({ email })),
