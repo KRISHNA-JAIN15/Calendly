@@ -1,32 +1,33 @@
-import Link from "next/link";
+import { addDays, addMinutes } from "date-fns";
 import { and, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/db/db";
-import { EventTable, UserPublicProfileTable } from "@/db/schema";
+import { BookingTable, EventTable, UserPublicProfileTable } from "@/db/schema";
+import { PublicEventBooking } from "@/components/public/public-event-booking";
 import {
   buildCandidateTimesForDate,
-  formatTimeInTimezone,
   getValidTimesFromSchedule,
 } from "@/lib/booking-availability";
 import { formatInTimeZone } from "date-fns-tz";
+import { createCalendarEvent } from "@/lib/google-calendar";
+import {
+  parseBookingFormData,
+  parseGuestEmails,
+  type BookMeetingResult,
+} from "@/lib/meeting-booking";
 import { ensureScheduleWithDefaults } from "@/lib/schedule-defaults";
+import { getTimezoneOptions } from "@/lib/timezones";
 
 type PublicEventPageProps = {
   params: Promise<{ username: string; eventSlug: string }>;
-  searchParams: Promise<{ date?: string }>;
 };
 
-function isDateISO(value: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value);
-}
+const AVAILABILITY_WINDOW_DAYS = 60;
 
 export default async function PublicEventPage({
   params,
-  searchParams,
 }: PublicEventPageProps) {
   const { username, eventSlug } = await params;
-  const { date } = await searchParams;
   const normalizedUsername = username.trim().toLowerCase();
   const normalizedEventSlug = eventSlug.trim().toLowerCase();
 
@@ -68,75 +69,199 @@ export default async function PublicEventPage({
   }
 
   const { schedule } = await ensureScheduleWithDefaults(profile.clerkUserId);
-  const timezone = schedule.timezone;
-  const todayInTimezone = formatInTimeZone(new Date(), timezone, "yyyy-MM-dd");
-  const selectedDate = date && isDateISO(date) ? date : todayInTimezone;
 
-  const candidateTimes = buildCandidateTimesForDate(selectedDate, timezone, 15);
+  const availabilityDateKeys = Array.from(
+    new Set(
+      Array.from({ length: AVAILABILITY_WINDOW_DAYS }, (_, index) =>
+        formatInTimeZone(addDays(new Date(), index), schedule.timezone, "yyyy-MM-dd")
+      )
+    )
+  ).sort();
+
+  const candidateTimes = availabilityDateKeys.flatMap((dateKey) =>
+    buildCandidateTimesForDate(dateKey, schedule.timezone, 15)
+  );
 
   const validTimes = await getValidTimesFromSchedule(candidateTimes, {
     clerkUserId: profile.clerkUserId,
     durationInMinutes: event.durationInMinutes,
   });
 
+  const availableStartTimesISO = validTimes.map((time) => time.toISOString());
+
+  const timezoneOptions = getTimezoneOptions([schedule.timezone]);
+
+  async function createMeeting(formData: FormData): Promise<BookMeetingResult> {
+    "use server";
+
+    const parsedPayload = parseBookingFormData(formData);
+    if (!parsedPayload.success) {
+      return {
+        error:
+          parsedPayload.error.issues[0]?.message ??
+          "Please review your booking details and try again.",
+      };
+    }
+
+    const payload = parsedPayload.data;
+
+    if (
+      payload.profileSlug !== normalizedUsername ||
+      payload.eventSlug !== normalizedEventSlug
+    ) {
+      return {
+        error: "Invalid booking link. Please refresh and try again.",
+      };
+    }
+
+    const profiles = await db
+      .select({
+        clerkUserId: UserPublicProfileTable.clerkUserId,
+      })
+      .from(UserPublicProfileTable)
+      .where(eq(UserPublicProfileTable.publicSlug, payload.profileSlug))
+      .limit(1);
+
+    const profile = profiles[0];
+    if (!profile) {
+      return { error: "This booking page is no longer available." };
+    }
+
+    const events = await db
+      .select({
+        id: EventTable.id,
+        name: EventTable.name,
+        slug: EventTable.slug,
+        durationInMinutes: EventTable.durationInMinutes,
+        clerkUserId: EventTable.clerkUserId,
+      })
+      .from(EventTable)
+      .where(
+        and(
+          eq(EventTable.clerkUserId, profile.clerkUserId),
+          eq(EventTable.slug, payload.eventSlug),
+          eq(EventTable.isActive, true)
+        )
+      )
+      .limit(1);
+
+    const event = events[0];
+    if (!event) {
+      return { error: "This event type is no longer available." };
+    }
+
+    const requestedStartTime = new Date(payload.startTimeISO);
+    if (Number.isNaN(requestedStartTime.getTime()) || requestedStartTime <= new Date()) {
+      return { error: "Please pick a future time slot." };
+    }
+
+    const { schedule } = await ensureScheduleWithDefaults(event.clerkUserId);
+    const bookingDate = formatInTimeZone(
+      requestedStartTime,
+      schedule.timezone,
+      "yyyy-MM-dd"
+    );
+
+    const bookingDayCandidates = buildCandidateTimesForDate(
+      bookingDate,
+      schedule.timezone,
+      15
+    );
+
+    const bookingDayValidTimes = await getValidTimesFromSchedule(bookingDayCandidates, {
+      clerkUserId: event.clerkUserId,
+      durationInMinutes: event.durationInMinutes,
+    });
+
+    const isTimeStillAvailable = bookingDayValidTimes.some(
+      (time) => time.getTime() === requestedStartTime.getTime()
+    );
+
+    if (!isTimeStillAvailable) {
+      return { error: "That time was just booked. Please choose another slot." };
+    }
+
+    const additionalGuestEmails = parseGuestEmails(payload.additionalGuests);
+    const endsAt = addMinutes(requestedStartTime, event.durationInMinutes);
+
+    let bookingId: string | undefined;
+    try {
+      const insertedBookings = await db
+        .insert(BookingTable)
+        .values({
+          eventId: event.id,
+          clerkUserId: event.clerkUserId,
+          inviteeName: payload.inviteeName,
+          inviteeEmail: payload.inviteeEmail,
+          startsAt: requestedStartTime,
+          endsAt,
+          timezone: payload.inviteeTimezone,
+        })
+        .returning({ id: BookingTable.id });
+
+      bookingId = insertedBookings[0]?.id;
+    } catch (error) {
+      const maybeDatabaseError = error as { code?: string } | null;
+      if (maybeDatabaseError?.code === "23505") {
+        return { error: "That time was just booked. Please choose another slot." };
+      }
+
+      return { error: "Could not save this booking. Please try again." };
+    }
+
+    try {
+      await createCalendarEvent({
+        clerkUserId: event.clerkUserId,
+        guestName: payload.inviteeName,
+        guestEmail: payload.inviteeEmail,
+        guests: additionalGuestEmails.map((email) => ({ email })),
+        startTime: requestedStartTime,
+        guestNotes: payload.guestNotes,
+        durationInMinutes: event.durationInMinutes,
+        eventName: event.name,
+      });
+    } catch (error) {
+      if (bookingId) {
+        await db.delete(BookingTable).where(eq(BookingTable.id, bookingId));
+      }
+
+      const message = error instanceof Error ? error.message : "";
+      if (message.includes("Google account is not connected")) {
+        return {
+          error:
+            "This host has not connected Google Calendar yet. Please try again later.",
+        };
+      }
+
+      return {
+        error: "Could not create the calendar invite. Please pick another slot.",
+      };
+    }
+
+    return {
+      success: true,
+      confirmation: {
+        inviteeName: payload.inviteeName,
+        inviteeEmail: payload.inviteeEmail,
+        startTimeISO: requestedStartTime.toISOString(),
+        inviteeTimezone: payload.inviteeTimezone,
+      },
+    };
+  }
+
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-6">
-      <div className="space-y-1">
-        <p className="text-sm text-muted-foreground">
-          <Link href={`/${profile.publicSlug}`} className="underline underline-offset-4">
-            @{profile.publicSlug}
-          </Link>
-        </p>
-        <h1 className="text-3xl font-semibold">{event.name}</h1>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{event.durationInMinutes} minute meeting</CardTitle>
-          <CardDescription>{event.description || "No description"}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <form className="space-y-2" method="get">
-            <label htmlFor="date" className="block text-sm font-medium">
-              Select date
-            </label>
-            <input
-              id="date"
-              name="date"
-              type="date"
-              defaultValue={selectedDate}
-              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-            />
-            <button
-              type="submit"
-              className="inline-flex h-8 items-center rounded-lg border border-zinc-200 px-3 text-sm font-medium hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
-            >
-              Check availability
-            </button>
-          </form>
-
-          {validTimes.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No available slots for this date.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Available times ({timezone})</p>
-              <div className="grid gap-2 sm:grid-cols-3">
-                {validTimes.map((time) => (
-                  <button
-                    key={time.toISOString()}
-                    type="button"
-                    className="h-9 rounded-lg border border-zinc-200 px-3 text-sm font-medium hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
-                  >
-                    {formatTimeInTimezone(time, timezone)}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+    <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
+      <PublicEventBooking
+        profileSlug={profile.publicSlug}
+        eventSlug={event.slug}
+        eventName={event.name}
+        eventDescription={event.description}
+        durationInMinutes={event.durationInMinutes}
+        hostTimezone={schedule.timezone}
+        timezoneOptions={timezoneOptions}
+        availableStartTimesISO={availableStartTimesISO}
+        createMeetingAction={createMeeting}
+      />
     </div>
   );
 }
