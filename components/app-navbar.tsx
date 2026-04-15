@@ -49,7 +49,7 @@ export function AppNavbar() {
                     className={cn(
                       "text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100",
                       isActiveLink(link.href)
-                        ? "bg-zinc-900 text-white hover:bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-100"
+                        ? "bg-zinc-900 text-white hover:bg-zinc-900 hover:text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-100 dark:hover:text-zinc-900"
                         : ""
                     )}
                   >
@@ -113,7 +113,7 @@ export function AppNavbar() {
                   className={cn(
                     "w-full justify-start",
                     isActiveLink(link.href)
-                      ? "bg-zinc-900 text-white hover:bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-100"
+                      ? "bg-zinc-900 text-white hover:bg-zinc-900 hover:text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-100 dark:hover:text-zinc-900"
                       : ""
                   )}
                 >

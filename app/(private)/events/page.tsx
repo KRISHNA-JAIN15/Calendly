@@ -98,8 +98,11 @@ export default async function EventsPage() {
 							Manage your event types and keep booking links up to date.
 						</p>
 					</div>
-					<Button asChild className="w-full sm:w-auto">
-						<Link href="/events/new" className="w-full rounded-lg border border-sky-700 bg-sky-600 px-3 py-2 text-center text-white transition-colors hover:bg-sky-700 dark:border-sky-400 dark:bg-sky-500 dark:text-zinc-950 dark:hover:bg-sky-400">
+					<Button
+						asChild
+						className="w-full rounded-lg border border-sky-700 bg-sky-600 text-white transition-colors hover:bg-sky-700 hover:text-white sm:w-auto dark:border-sky-400 dark:bg-sky-500 dark:text-zinc-950 dark:hover:bg-sky-400 dark:hover:text-zinc-950"
+					>
+						<Link href="/events/new" className="w-full text-center">
 							New event
 						</Link>
 					</Button>
