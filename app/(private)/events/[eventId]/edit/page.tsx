@@ -10,6 +10,12 @@ type EditEventPageProps = {
 	params: Promise<{ eventId: string }>;
 };
 
+type SaveEventResult = {
+	error?: string;
+};
+
+const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
 export default async function EditEventPage({ params }: EditEventPageProps) {
 	const { userId } = await auth();
 	if (!userId) {
@@ -36,7 +42,7 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
 		redirect("/events");
 	}
 
-	async function updateEvent(formData: FormData) {
+	async function updateEvent(formData: FormData): Promise<SaveEventResult | void> {
 		"use server";
 
 		const { userId } = await auth();
@@ -53,19 +59,33 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
 		const isActive = formData.get("isActive") === "on";
 
 		if (!name || !slug || !Number.isFinite(durationInMinutes) || durationInMinutes <= 0) {
-			return;
+			return { error: "Please fill all required fields correctly." };
 		}
 
-		await db
-			.update(EventTable)
-			.set({
-				name,
-				slug,
-				description: description || null,
-				durationInMinutes,
-				isActive,
-			})
-			.where(and(eq(EventTable.id, eventId), eq(EventTable.clerkUserId, userId)));
+		if (!slugPattern.test(slug)) {
+			return { error: "Use lowercase letters, numbers, and hyphens in URL slug." };
+		}
+
+		try {
+			await db
+				.update(EventTable)
+				.set({
+					name,
+					slug,
+					description: description || null,
+					durationInMinutes,
+					isActive,
+				})
+				.where(and(eq(EventTable.id, eventId), eq(EventTable.clerkUserId, userId)));
+		} catch (error) {
+			const maybeDatabaseError = error as { code?: string } | null;
+
+			if (maybeDatabaseError?.code === "23505") {
+				return { error: "You already have an event with this URL slug." };
+			}
+
+			return { error: "Could not update event right now. Please try again." };
+		}
 
 		redirect("/events");
 	}

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { addMinutes } from "date-fns";
+import { addMinutes, areIntervalsOverlapping } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -64,14 +64,21 @@ export function PublicEventBooking({
   const [step, setStep] = useState<"slot" | "details" | "confirmed">("slot");
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
   const [selectedStartTimeISO, setSelectedStartTimeISO] = useState<string | null>(null);
+  const [availableSlots, setAvailableSlots] = useState<string[]>(() => [
+    ...availableStartTimesISO,
+  ]);
   const [serverError, setServerError] = useState("");
   const [confirmation, setConfirmation] = useState<BookMeetingResult["confirmation"]>();
   const [isPending, startTransition] = useTransition();
 
+  useEffect(() => {
+    setAvailableSlots(availableStartTimesISO);
+  }, [availableStartTimesISO]);
+
   const slotsByDateKey = useMemo(() => {
     const grouped = new Map<string, string[]>();
 
-    for (const slotIso of availableStartTimesISO) {
+    for (const slotIso of availableSlots) {
       const key = toCalendarDateKey(new Date(slotIso));
       const slots = grouped.get(key) ?? [];
       slots.push(slotIso);
@@ -88,7 +95,7 @@ export function PublicEventBooking({
     }
 
     return grouped;
-  }, [availableStartTimesISO]);
+  }, [availableSlots]);
 
   const availableDateKeys = useMemo(
     () => Array.from(slotsByDateKey.keys()).sort(),
@@ -158,6 +165,7 @@ export function PublicEventBooking({
     formData.set("inviteeEmail", values.inviteeEmail);
     formData.set("additionalGuests", values.additionalGuests ?? "");
     formData.set("guestNotes", values.guestNotes ?? "");
+    const bookingStartTimeISO = selectedStartTimeISO;
 
     startTransition(async () => {
       const result = await createMeetingAction(formData);
@@ -168,7 +176,22 @@ export function PublicEventBooking({
       }
 
       if (result.success && result.confirmation) {
+        const bookedStartTime = new Date(bookingStartTimeISO);
+        const bookedEndTime = addMinutes(bookedStartTime, durationInMinutes);
+
+        setAvailableSlots((previousSlots) =>
+          previousSlots.filter((slotIso) => {
+            const candidateStart = new Date(slotIso);
+            const candidateEnd = addMinutes(candidateStart, durationInMinutes);
+
+            return !areIntervalsOverlapping(
+              { start: candidateStart, end: candidateEnd },
+              { start: bookedStartTime, end: bookedEndTime }
+            );
+          })
+        );
         setConfirmation(result.confirmation);
+        setSelectedStartTimeISO(null);
         setStep("confirmed");
         reset();
         return;
@@ -472,24 +495,18 @@ export function PublicEventBooking({
                 </p>
               </div>
 
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button asChild className="sm:flex-1">
-                  <Link href={`/${profileSlug}`}>Book another meeting</Link>
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="sm:flex-1"
-                  onClick={() => {
-                    setStep("slot");
-                    setConfirmation(undefined);
-                    setSelectedStartTimeISO(null);
-                    setServerError("");
-                  }}
-                >
-                  Schedule a different time
-                </Button>
-              </div>
+              <Button
+                type="button"
+                className="w-full"
+                onClick={() => {
+                  setStep("slot");
+                  setConfirmation(undefined);
+                  setSelectedStartTimeISO(null);
+                  setServerError("");
+                }}
+              >
+                Book another meeting
+              </Button>
             </CardContent>
           </>
         ) : null}

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,7 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 type EventFormProps = {
-	action: (formData: FormData) => void | Promise<void>;
+	action: (
+		formData: FormData
+	) =>
+		| { error?: string }
+		| void
+		| Promise<{ error?: string } | void>;
 	initialValues?: {
 		name: string;
 		slug: string;
@@ -38,6 +43,7 @@ type EventFormValues = z.output<typeof eventFormSchema>;
 
 export function EventForm({ action, initialValues, submitLabel = "Save event" }: EventFormProps) {
 	const [isPending, startTransition] = useTransition();
+	const [serverError, setServerError] = useState("");
 
 	const {
 		register,
@@ -55,6 +61,8 @@ export function EventForm({ action, initialValues, submitLabel = "Save event" }:
 	});
 
 	const onSubmit = (values: EventFormValues) => {
+		setServerError("");
+
 		const formData = new FormData();
 		formData.set("name", values.name.trim());
 		formData.set("slug", values.slug.trim().toLowerCase());
@@ -66,7 +74,11 @@ export function EventForm({ action, initialValues, submitLabel = "Save event" }:
 		}
 
 		startTransition(async () => {
-			await action(formData);
+			const result = await action(formData);
+
+			if (result && typeof result === "object" && result.error) {
+				setServerError(result.error);
+			}
 		});
 	};
 
@@ -159,6 +171,12 @@ export function EventForm({ action, initialValues, submitLabel = "Save event" }:
 					{isPending ? "Saving..." : submitLabel}
 				</Button>
 			</div>
+
+			{serverError ? (
+				<p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+					{serverError}
+				</p>
+			) : null}
 		</form>
 	);
 }
