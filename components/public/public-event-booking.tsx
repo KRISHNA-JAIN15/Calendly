@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { addMinutes, areIntervalsOverlapping } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CalendarIcon, Clock3, Globe2, User2 } from "lucide-react";
+import { CalendarIcon, Clock3, Globe2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,6 +51,8 @@ export function PublicEventBooking({
   availableStartTimesISO,
   createMeetingAction,
 }: PublicEventBookingProps) {
+  const router = useRouter();
+
   const browserTimezone =
     typeof Intl !== "undefined"
       ? Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -61,14 +64,13 @@ export function PublicEventBooking({
       : hostTimezone;
 
   const [selectedTimezone, setSelectedTimezone] = useState(defaultInviteeTimezone);
-  const [step, setStep] = useState<"slot" | "details" | "confirmed">("slot");
+  const [step, setStep] = useState<"slot" | "details">("slot");
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
   const [selectedStartTimeISO, setSelectedStartTimeISO] = useState<string | null>(null);
   const [availableSlots, setAvailableSlots] = useState<string[]>(() => [
     ...availableStartTimesISO,
   ]);
   const [serverError, setServerError] = useState("");
-  const [confirmation, setConfirmation] = useState<BookMeetingResult["confirmation"]>();
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -190,18 +192,23 @@ export function PublicEventBooking({
             );
           })
         );
-        setConfirmation(result.confirmation);
-        setSelectedStartTimeISO(null);
-        setStep("confirmed");
+        const confirmationQuery = new URLSearchParams({
+          start: result.confirmation.startTimeISO,
+          timezone: result.confirmation.inviteeTimezone,
+          name: result.confirmation.inviteeName,
+          email: result.confirmation.inviteeEmail,
+          duration: String(durationInMinutes),
+          event: eventName,
+        });
+
         reset();
+        router.push(`/${profileSlug}/${eventSlug}/confirmation?${confirmationQuery.toString()}`);
         return;
       }
 
       setServerError("Could not schedule this meeting. Please try again.");
     });
   };
-
-  const confirmationStart = confirmation ? new Date(confirmation.startTimeISO) : null;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
@@ -465,51 +472,6 @@ export function PublicEventBooking({
           </>
         ) : null}
 
-        {step === "confirmed" && confirmation && confirmationStart ? (
-          <>
-            <CardHeader>
-              <CardTitle>Meeting scheduled</CardTitle>
-              <CardDescription>Your invitation has been sent.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200">
-                <p className="font-medium">
-                  {formatInTimeZone(
-                    confirmationStart,
-                    confirmation.inviteeTimezone,
-                    "EEEE, MMMM d, yyyy"
-                  )}
-                </p>
-                <p>
-                  {formatInTimeZone(confirmationStart, confirmation.inviteeTimezone, "h:mm a")} -{" "}
-                  {formatInTimeZone(
-                    addMinutes(confirmationStart, durationInMinutes),
-                    confirmation.inviteeTimezone,
-                    "h:mm a"
-                  )}{" "}
-                  ({confirmation.inviteeTimezone})
-                </p>
-                <p className="mt-2 inline-flex items-center gap-1.5">
-                  <User2 className="size-4" />
-                  {confirmation.inviteeName}
-                </p>
-              </div>
-
-              <Button
-                type="button"
-                className="w-full"
-                onClick={() => {
-                  setStep("slot");
-                  setConfirmation(undefined);
-                  setSelectedStartTimeISO(null);
-                  setServerError("");
-                }}
-              >
-                Book another meeting
-              </Button>
-            </CardContent>
-          </>
-        ) : null}
       </Card>
     </div>
   );
