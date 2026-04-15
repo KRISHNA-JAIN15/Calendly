@@ -5,6 +5,18 @@ import { relations, sql } from "drizzle-orm";
 const createdAt = timestamp("createdAt").notNull().defaultNow();
 const updatedAt = timestamp("updatedAt").notNull().defaultNow().$onUpdate(() => new Date());
 
+export const UserPublicProfileTable = pgTable(
+    "userPublicProfiles",
+    {
+        id: uuid("id").primaryKey().defaultRandom(),
+        clerkUserId: text("clerkUserId").notNull().unique(),
+        publicSlug: text("publicSlug").notNull(),
+        createdAt,
+        updatedAt,
+    },
+    (table) => [uniqueIndex("userPublicProfiles_publicSlug_idx").on(table.publicSlug)]
+);
+
 export const EventTable = pgTable(
     "events",
     {
@@ -20,7 +32,7 @@ export const EventTable = pgTable(
     },
     (table) => [
         index("events_clerkUserId_idx").on(table.clerkUserId),
-        uniqueIndex("events_slug_idx").on(table.slug),
+        uniqueIndex("events_clerkUserId_slug_idx").on(table.clerkUserId, table.slug),
     ]
 );
 

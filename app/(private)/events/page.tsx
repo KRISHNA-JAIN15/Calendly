@@ -4,8 +4,10 @@ import { revalidatePath } from "next/cache";
 import { and, desc, eq } from "drizzle-orm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DeleteEventAlert } from "@/components/events/delete-event-alert";
 import { db } from "@/db/db";
 import { EventTable } from "@/db/schema";
+import { ensureUserPublicProfile } from "@/lib/user-public-profile";
 
 async function toggleEventActive(formData: FormData) {
 	"use server";
@@ -55,6 +57,8 @@ export default async function EventsPage() {
 	if (!userId) {
 		return null;
 	}
+
+	const userProfile = await ensureUserPublicProfile(userId);
 
 	const events = await db
 		.select({
@@ -110,7 +114,9 @@ export default async function EventsPage() {
 										</button>
 									</form>
 								</div>
-								<CardDescription>/{event.slug}</CardDescription>
+								<CardDescription>
+									/{userProfile.publicSlug}/{event.slug}
+								</CardDescription>
 							</CardHeader>
 							<CardContent className="space-y-2">
 								<p className="text-sm text-muted-foreground">
@@ -121,12 +127,7 @@ export default async function EventsPage() {
 									<Button asChild size="sm" variant="outline">
 										<Link href={`/events/${event.id}/edit`}>Edit</Link>
 									</Button>
-									<form action={deleteEvent}>
-										<input type="hidden" name="eventId" value={event.id} />
-										<Button type="submit" size="sm" variant="destructive">
-											Delete
-										</Button>
-									</form>
+									<DeleteEventAlert eventId={event.id} action={deleteEvent} />
 								</div>
 							</CardContent>
 						</Card>
