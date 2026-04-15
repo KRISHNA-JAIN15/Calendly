@@ -1,5 +1,6 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
 import { clerkClient } from "@clerk/nextjs/server";
 import { google } from "googleapis";
 import { addMinutes, endOfDay, startOfDay } from "date-fns";
@@ -241,6 +242,7 @@ export async function createCalendarEvent({
       calendarId: "primary",
       auth: oauthClient,
       sendUpdates: "all",
+      conferenceDataVersion: 1,
       requestBody: {
         attendees: [
           ...normalizedGuests.map((guest) => ({
@@ -261,6 +263,14 @@ export async function createCalendarEvent({
           dateTime: addMinutes(startTime, durationInMinutes).toISOString(),
         },
         summary: `${primaryGuestDisplay} + ${hostName}: ${eventName}`,
+        conferenceData: {
+          createRequest: {
+            requestId: randomUUID(),
+            conferenceSolutionKey: {
+              type: "hangoutsMeet",
+            },
+          },
+        },
       },
     });
   } catch (error) {
