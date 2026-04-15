@@ -41,9 +41,7 @@ export default async function SchedulePage({ searchParams }: SchedulePageProps) 
   const defaultTimezone = isValidTimezone(schedule?.timezone ?? "")
     ? schedule.timezone
     : DEFAULT_SCHEDULE_TIMEZONE;
-  const timezoneOptionLabels = getTimezoneOptions([defaultTimezone], {
-    includeAll: true,
-  });
+  const timezoneOptionLabels = getTimezoneOptions([defaultTimezone]);
 
   async function saveSchedule(formData: FormData): Promise<SaveScheduleResult> {
     "use server";

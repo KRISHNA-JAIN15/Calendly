@@ -229,10 +229,29 @@ export default async function PublicEventPage({
       }
 
       const message = error instanceof Error ? error.message : "";
-      if (message.includes("Google account is not connected")) {
+      const normalizedMessage = message.toLowerCase();
+
+      if (normalizedMessage.includes("google account is not connected")) {
         return {
           error:
             "This host has not connected Google Calendar yet. Please try again later.",
+        };
+      }
+
+      if (
+        normalizedMessage.includes("insufficient") ||
+        normalizedMessage.includes("forbidden")
+      ) {
+        return {
+          error:
+            "Google Calendar permissions are incomplete. Please reconnect Google and grant calendar access.",
+        };
+      }
+
+      if (normalizedMessage.includes("missing google oauth environment variables")) {
+        return {
+          error:
+            "Calendar integration is not configured correctly. Please contact support.",
         };
       }
 

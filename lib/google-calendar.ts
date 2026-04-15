@@ -2,7 +2,7 @@ import "server-only";
 
 import { clerkClient } from "@clerk/nextjs/server";
 import { google } from "googleapis";
-import { addMinutes } from "date-fns";
+import { addMinutes, endOfDay, startOfDay } from "date-fns";
 
 type CalendarEventTime = {
   start: Date;
@@ -55,9 +55,10 @@ export async function getCalendarEventTimes(
       const message = error instanceof Error ? error.message.toLowerCase() : "";
 
       if (message.includes("insufficient") || message.includes("forbidden")) {
-        throw new Error(
-          "Missing Google Calendar FreeBusy permission (https://www.googleapis.com/auth/calendar.freebusy)."
-        );
+        return getCalendarEventTimesFromEventsApi(calendarClient, oauthClient, {
+          start,
+          end,
+        });
       }
 
       throw error;
@@ -92,6 +93,51 @@ export async function getCalendarEventTimes(
   }
 
   return Array.from(uniqueBusyIntervals.values()).sort(
+    (left, right) => left.start.getTime() - right.start.getTime()
+  );
+}
+
+async function getCalendarEventTimesFromEventsApi(
+  calendarClient: ReturnType<typeof google.calendar>,
+  oauthClient: Awaited<ReturnType<typeof getOAuthClient>>,
+  { start, end }: CalendarRange
+) {
+  let pageToken: string | undefined;
+  const busyIntervals: CalendarEventTime[] = [];
+
+  do {
+    const events = await calendarClient.events.list({
+      calendarId: "primary",
+      auth: oauthClient,
+      eventTypes: ["default"],
+      singleEvents: true,
+      timeMin: start.toISOString(),
+      timeMax: end.toISOString(),
+      maxResults: 2500,
+      pageToken,
+    });
+
+    for (const event of events.data.items ?? []) {
+      if (event.start?.date && event.end?.date) {
+        busyIntervals.push({
+          start: startOfDay(new Date(event.start.date)),
+          end: endOfDay(new Date(event.end.date)),
+        });
+        continue;
+      }
+
+      if (event.start?.dateTime && event.end?.dateTime) {
+        busyIntervals.push({
+          start: new Date(event.start.dateTime),
+          end: new Date(event.end.dateTime),
+        });
+      }
+    }
+
+    pageToken = events.data.nextPageToken ?? undefined;
+  } while (pageToken);
+
+  return busyIntervals.sort(
     (left, right) => left.start.getTime() - right.start.getTime()
   );
 }
