@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { and, desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/db/db";
 import { EventTable, UserPublicProfileTable } from "@/db/schema";
 
@@ -32,8 +32,6 @@ export default async function PublicUserPage({ params }: PublicUserPageProps) {
       id: EventTable.id,
       name: EventTable.name,
       slug: EventTable.slug,
-      description: EventTable.description,
-      durationInMinutes: EventTable.durationInMinutes,
     })
     .from(EventTable)
     .where(and(eq(EventTable.clerkUserId, profile.clerkUserId), eq(EventTable.isActive, true)))
@@ -44,6 +42,7 @@ export default async function PublicUserPage({ params }: PublicUserPageProps) {
       <div className="space-y-1">
         <p className="text-sm text-muted-foreground">Public booking page</p>
         <h1 className="text-3xl font-semibold">@{profile.publicSlug}</h1>
+        <p className="text-sm text-muted-foreground">Select an event</p>
       </div>
 
       {events.length === 0 ? (
@@ -54,23 +53,15 @@ export default async function PublicUserPage({ params }: PublicUserPageProps) {
           </CardHeader>
         </Card>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-3 sm:grid-cols-2">
           {events.map((event) => (
-            <Card key={event.id}>
-              <CardHeader>
-                <CardTitle>{event.name}</CardTitle>
-                <CardDescription>{event.durationInMinutes} min</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">{event.description || "No description"}</p>
-                <Link
-                  href={`/${profile.publicSlug}/${event.slug}`}
-                  className="inline-flex text-sm font-medium text-foreground underline underline-offset-4"
-                >
-                  Open booking page
-                </Link>
-              </CardContent>
-            </Card>
+            <Link
+              key={event.id}
+              href={`/${profile.publicSlug}/${event.slug}`}
+              className="rounded-xl border border-zinc-200 bg-white px-4 py-4 text-base font-medium text-zinc-900 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:hover:bg-zinc-900"
+            >
+              {event.name}
+            </Link>
           ))}
         </div>
       )}
