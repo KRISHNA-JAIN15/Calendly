@@ -3,13 +3,9 @@ import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
 import { and, eq, gt, lt } from "drizzle-orm";
 import { db } from "@/db/db";
 import { DAYS_OF_WEEK_IN_ORDER } from "@/data/constants";
-import {
-  BookingTable,
-  ScheduleAvailabilityTable,
-  ScheduleTable,
-  bookingStatusEnum,
-} from "@/db/schema";
+import { BookingTable, bookingStatusEnum } from "@/db/schema";
 import { getCalendarEventTimes } from "@/lib/google-calendar";
+import { ensureScheduleWithDefaults } from "@/lib/schedule-defaults";
 
 type DayOfWeek = (typeof DAYS_OF_WEEK_IN_ORDER)[number];
 type ScheduleAvailability = {
@@ -39,28 +35,9 @@ export async function getValidTimesFromSchedule(
     return [];
   }
 
-  const schedules = await db
-    .select({
-      id: ScheduleTable.id,
-      timezone: ScheduleTable.timezone,
-    })
-    .from(ScheduleTable)
-    .where(eq(ScheduleTable.clerkUserId, event.clerkUserId))
-    .limit(1);
-
-  const schedule = schedules[0];
-  if (!schedule) {
-    return [];
-  }
-
-  const availabilities = await db
-    .select({
-      dayOfWeek: ScheduleAvailabilityTable.dayOfWeek,
-      startTime: ScheduleAvailabilityTable.startTime,
-      endTime: ScheduleAvailabilityTable.endTime,
-    })
-    .from(ScheduleAvailabilityTable)
-    .where(eq(ScheduleAvailabilityTable.scheduleId, schedule.id));
+  const { schedule, availabilities } = await ensureScheduleWithDefaults(
+    event.clerkUserId
+  );
 
   const groupedAvailabilities = availabilities.reduce<
     Partial<Record<DayOfWeek, ScheduleAvailability[]>>

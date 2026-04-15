@@ -6,6 +6,7 @@ import { ScheduleForm } from "@/components/schedule/schedule-form";
 import { db } from "@/db/db";
 import { DAYS_OF_WEEK_IN_ORDER } from "@/data/constants";
 import { ScheduleAvailabilityTable, ScheduleTable } from "@/db/schema";
+import { ensureScheduleWithDefaults } from "@/lib/schedule-defaults";
 
 const TIMEZONE_OPTIONS = [
   "Asia/Kolkata",
@@ -66,27 +67,8 @@ export default async function SchedulePage({ searchParams }: SchedulePageProps) 
 
   await searchParams;
 
-  const schedules = await db
-    .select({
-      id: ScheduleTable.id,
-      timezone: ScheduleTable.timezone,
-    })
-    .from(ScheduleTable)
-    .where(eq(ScheduleTable.clerkUserId, userId))
-    .limit(1);
-
-  const schedule = schedules[0] ?? null;
-
-  const existingAvailabilities = schedule
-    ? await db
-        .select({
-          dayOfWeek: ScheduleAvailabilityTable.dayOfWeek,
-          startTime: ScheduleAvailabilityTable.startTime,
-          endTime: ScheduleAvailabilityTable.endTime,
-        })
-        .from(ScheduleAvailabilityTable)
-        .where(eq(ScheduleAvailabilityTable.scheduleId, schedule.id))
-    : [];
+  const { schedule, availabilities: existingAvailabilities } =
+    await ensureScheduleWithDefaults(userId);
 
   const defaultTimezone = schedule?.timezone ?? "Asia/Kolkata";
   const timezoneOptions = (TIMEZONE_OPTIONS as readonly string[]).includes(defaultTimezone)

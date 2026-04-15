@@ -3,13 +3,14 @@ import { and, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/db/db";
-import { EventTable, ScheduleTable, UserPublicProfileTable } from "@/db/schema";
+import { EventTable, UserPublicProfileTable } from "@/db/schema";
 import {
   buildCandidateTimesForDate,
   formatTimeInTimezone,
   getValidTimesFromSchedule,
 } from "@/lib/booking-availability";
 import { formatInTimeZone } from "date-fns-tz";
+import { ensureScheduleWithDefaults } from "@/lib/schedule-defaults";
 
 type PublicEventPageProps = {
   params: Promise<{ username: string; eventSlug: string }>;
@@ -66,30 +67,17 @@ export default async function PublicEventPage({
     notFound();
   }
 
-  const schedules = await db
-    .select({
-      timezone: ScheduleTable.timezone,
-    })
-    .from(ScheduleTable)
-    .where(eq(ScheduleTable.clerkUserId, profile.clerkUserId))
-    .limit(1);
-
-  const timezone = schedules[0]?.timezone;
-  const todayInTimezone = timezone
-    ? formatInTimeZone(new Date(), timezone, "yyyy-MM-dd")
-    : formatInTimeZone(new Date(), "UTC", "yyyy-MM-dd");
+  const { schedule } = await ensureScheduleWithDefaults(profile.clerkUserId);
+  const timezone = schedule.timezone;
+  const todayInTimezone = formatInTimeZone(new Date(), timezone, "yyyy-MM-dd");
   const selectedDate = date && isDateISO(date) ? date : todayInTimezone;
 
-  const candidateTimes = timezone
-    ? buildCandidateTimesForDate(selectedDate, timezone, 15)
-    : [];
+  const candidateTimes = buildCandidateTimesForDate(selectedDate, timezone, 15);
 
-  const validTimes = timezone
-    ? await getValidTimesFromSchedule(candidateTimes, {
-        clerkUserId: profile.clerkUserId,
-        durationInMinutes: event.durationInMinutes,
-      })
-    : [];
+  const validTimes = await getValidTimesFromSchedule(candidateTimes, {
+    clerkUserId: profile.clerkUserId,
+    durationInMinutes: event.durationInMinutes,
+  });
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-6">
@@ -127,11 +115,7 @@ export default async function PublicEventPage({
             </button>
           </form>
 
-          {!timezone ? (
-            <p className="text-sm text-muted-foreground">
-              This host has not set a schedule yet.
-            </p>
-          ) : validTimes.length === 0 ? (
+          {validTimes.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No available slots for this date.
             </p>
