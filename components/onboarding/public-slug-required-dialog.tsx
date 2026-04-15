@@ -59,7 +59,12 @@ export function PublicSlugRequiredDialog({ savePublicSlugAction }: PublicSlugReq
                 id="publicSlug"
                 type="text"
                 value={publicSlug}
-                onChange={(event) => setPublicSlug(event.target.value)}
+                onChange={(event) => {
+                  setPublicSlug(event.target.value);
+                  if (error) {
+                    setError("");
+                  }
+                }}
                 placeholder="your-name"
                 disabled={isPending}
               />
