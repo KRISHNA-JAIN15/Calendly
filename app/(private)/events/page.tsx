@@ -99,7 +99,9 @@ export default async function EventsPage() {
 						</p>
 					</div>
 					<Button asChild>
-						<Link href="/events/new">New event</Link>
+						<Link href="/events/new" className="rounded-lg border border-sky-700 bg-sky-600 px-3 py-2 text-white transition-colors hover:bg-sky-700 dark:border-sky-400 dark:bg-sky-500 dark:text-zinc-950 dark:hover:bg-sky-400">
+							New event
+						</Link>
 					</Button>
 				</div>
 
@@ -171,7 +173,12 @@ export default async function EventsPage() {
 										{event.description || "No description"}
 									</p>
 									<div className="flex items-center gap-2 pt-1">
-										<Button asChild size="sm" variant="outline">
+										<Button
+											asChild
+											size="sm"
+											variant="outline"
+											className="border-sky-300 text-sky-700 hover:bg-sky-50 dark:border-sky-700 dark:text-sky-300 dark:hover:bg-sky-900/40"
+										>
 											<Link href={`/events/${event.id}/edit`}>Edit</Link>
 										</Button>
 										<DeleteEventAlert eventId={event.id} action={deleteEvent} />

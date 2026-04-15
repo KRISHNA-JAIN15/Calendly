@@ -45,7 +45,11 @@ export function CancelMeetingAlert({ bookingId, action }: CancelMeetingAlertProp
     <div className="space-y-2">
       <AlertDialog>
         <AlertDialogTrigger asChild>
-          <Button size="sm" variant="destructive">
+          <Button
+            size="sm"
+            variant="destructive"
+            className="border border-red-700 bg-red-600 text-white hover:bg-red-700 dark:border-red-400 dark:bg-red-500 dark:text-zinc-950 dark:hover:bg-red-400"
+          >
             Cancel meeting
           </Button>
         </AlertDialogTrigger>

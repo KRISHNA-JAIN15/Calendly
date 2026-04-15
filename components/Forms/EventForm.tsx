@@ -194,7 +194,11 @@ export function EventForm({ action, initialValues, submitLabel = "Save event" }:
 				<Button asChild variant="outline" type="button">
 					<Link href="/events">Cancel</Link>
 				</Button>
-				<Button type="submit" disabled={isPending}>
+				<Button
+					type="submit"
+					disabled={isPending}
+					className="rounded-lg border border-sky-700 bg-sky-600 text-white hover:bg-sky-700 dark:border-sky-400 dark:bg-sky-500 dark:text-zinc-950 dark:hover:bg-sky-400"
+				>
 					{isPending ? "Saving..." : submitLabel}
 				</Button>
 			</div>

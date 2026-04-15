@@ -214,7 +214,13 @@ export function ScheduleForm({ action, defaultTimezone, timezoneOptions, initial
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-medium">{day}</p>
-                    <Button type="button" variant="outline" size="sm" onClick={() => addSlot(day)}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addSlot(day)}
+                      className="border-cyan-300 text-cyan-700 hover:bg-cyan-50 dark:border-cyan-700 dark:text-cyan-300 dark:hover:bg-cyan-900/40"
+                    >
                       Add slot
                     </Button>
                   </div>
@@ -254,6 +260,7 @@ export function ScheduleForm({ action, defaultTimezone, timezoneOptions, initial
                             variant="ghost"
                             size="sm"
                             onClick={() => removeSlot(day, slot.id)}
+                            className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
                           >
                             Remove
                           </Button>
@@ -268,8 +275,12 @@ export function ScheduleForm({ action, defaultTimezone, timezoneOptions, initial
         </CardContent>
       </Card>
 
-      <div className="flex justify-end">
-        <Button type="submit" disabled={isPending}>
+      <div className="flex justify-end mb-16">
+        <Button
+          type="submit"
+          disabled={isPending}
+          className="rounded-lg border border-emerald-700 bg-emerald-600 text-white hover:bg-emerald-700 dark:border-emerald-400 dark:bg-emerald-500 dark:text-zinc-950 dark:hover:bg-emerald-400"
+        >
           {isPending ? "Saving..." : "Save schedule"}
         </Button>
       </div>

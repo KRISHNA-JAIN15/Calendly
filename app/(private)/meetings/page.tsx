@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, desc, eq } from "drizzle-orm";
 import { formatInTimeZone } from "date-fns-tz";
+import { CalendarCheck2, Clock4, History } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CancelMeetingAlert } from "@/components/meetings/cancel-meeting-alert";
 import { db } from "@/db/db";
@@ -145,10 +146,14 @@ export default async function MeetingsPage() {
   );
   const pastMeetings: MeetingRow[] = meetings.filter((meeting) => meeting.startsAt < now);
 
+  const totalMeetings = meetings.length;
+  const upcomingCount = upcomingMeetings.length;
+  const pastCount = pastMeetings.length;
+
   const renderMeetingList = (items: MeetingRow[], listType: "upcoming" | "past") => {
     if (items.length === 0) {
       return (
-        <Card>
+        <Card className="border-zinc-200/80 dark:border-zinc-800">
           <CardHeader>
             <CardTitle>
               {listType === "upcoming" ? "No upcoming meetings" : "No past meetings"}
@@ -172,19 +177,37 @@ export default async function MeetingsPage() {
             meeting.timezone
           );
 
+          const meetingStatusLabel = listType === "upcoming" ? "Upcoming" : "Completed";
+          const meetingStatusClassName =
+            listType === "upcoming"
+              ? "bg-cyan-100 text-cyan-800 dark:bg-cyan-500/15 dark:text-cyan-300"
+              : "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300";
+
           return (
-            <Card key={meeting.id}>
-              <CardHeader>
-                <CardTitle>{meeting.eventName}</CardTitle>
-                <CardDescription>{dateTime.date}</CardDescription>
+            <Card key={meeting.id} className="border-zinc-200/80 dark:border-zinc-800">
+              <CardHeader className="space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1">
+                    <CardTitle className="text-lg">{meeting.eventName}</CardTitle>
+                    <CardDescription>{dateTime.date}</CardDescription>
+                  </div>
+                  <span
+                    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${meetingStatusClassName}`}
+                  >
+                    {meetingStatusLabel}
+                  </span>
+                </div>
+
+                <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+                  {dateTime.time}
+                </p>
               </CardHeader>
               <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">{dateTime.time}</p>
-                <p className="text-sm">
-                  <span className="font-medium">Invitee:</span> {meeting.inviteeName}
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">Invitee:</span> {meeting.inviteeName}
                 </p>
-                <p className="text-sm">
-                  <span className="font-medium">Email:</span> {meeting.inviteeEmail}
+                <p className="text-sm text-muted-foreground break-all">
+                  <span className="font-medium text-foreground">Email:</span> {meeting.inviteeEmail}
                 </p>
                 {listType === "upcoming" ? (
                   <CancelMeetingAlert bookingId={meeting.id} action={cancelMeeting} />
@@ -198,21 +221,47 @@ export default async function MeetingsPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-8">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">Meetings</h1>
+    <div className="mx-auto w-full max-w-5xl space-y-8">
+      <section className="space-y-4">
+        <div className="space-y-1">
+        <h1 className="text-3xl font-semibold tracking-tight">Meetings</h1>
         <p className="text-sm text-muted-foreground">
           View upcoming and past meetings, and cancel upcoming meetings.
         </p>
-      </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/50">
+            <p className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              <CalendarCheck2 className="size-3.5" />
+              Total meetings
+            </p>
+            <p className="mt-1 text-2xl font-semibold tracking-tight">{totalMeetings}</p>
+          </div>
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/50">
+            <p className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              <Clock4 className="size-3.5" />
+              Upcoming
+            </p>
+            <p className="mt-1 text-2xl font-semibold tracking-tight">{upcomingCount}</p>
+          </div>
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/50">
+            <p className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              <History className="size-3.5" />
+              Past
+            </p>
+            <p className="mt-1 text-2xl font-semibold tracking-tight">{pastCount}</p>
+          </div>
+        </div>
+      </section>
 
       <section className="space-y-3">
-        <h2 className="text-xl font-semibold">Upcoming meetings</h2>
+        <h2 className="text-xl font-semibold tracking-tight">Upcoming meetings</h2>
         {renderMeetingList(upcomingMeetings, "upcoming")}
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-xl font-semibold">Past meetings</h2>
+        <h2 className="text-xl font-semibold tracking-tight">Past meetings</h2>
         {renderMeetingList(pastMeetings, "past")}
       </section>
     </div>
