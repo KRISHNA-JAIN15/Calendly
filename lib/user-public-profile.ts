@@ -2,17 +2,18 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db/db";
 import { UserPublicProfileTable } from "@/db/schema";
 
-function getDefaultPublicSlug(clerkUserId: string) {
-  const slug = clerkUserId
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+export const PUBLIC_SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-  return slug || "user";
+export function normalizePublicSlug(rawValue: string) {
+  return rawValue.trim().toLowerCase();
 }
 
-export async function ensureUserPublicProfile(clerkUserId: string) {
-  const existingProfiles = await db
+export function isValidPublicSlug(publicSlug: string) {
+  return publicSlug.length >= 3 && publicSlug.length <= 40 && PUBLIC_SLUG_REGEX.test(publicSlug);
+}
+
+export async function getUserPublicProfile(clerkUserId: string) {
+  const profiles = await db
     .select({
       clerkUserId: UserPublicProfileTable.clerkUserId,
       publicSlug: UserPublicProfileTable.publicSlug,
@@ -21,29 +22,5 @@ export async function ensureUserPublicProfile(clerkUserId: string) {
     .where(eq(UserPublicProfileTable.clerkUserId, clerkUserId))
     .limit(1);
 
-  const existingProfile = existingProfiles[0];
-  if (existingProfile) {
-    return existingProfile;
-  }
-
-  const publicSlug = getDefaultPublicSlug(clerkUserId);
-
-  await db
-    .insert(UserPublicProfileTable)
-    .values({
-      clerkUserId,
-      publicSlug,
-    })
-    .onConflictDoNothing({ target: UserPublicProfileTable.clerkUserId });
-
-  const createdProfiles = await db
-    .select({
-      clerkUserId: UserPublicProfileTable.clerkUserId,
-      publicSlug: UserPublicProfileTable.publicSlug,
-    })
-    .from(UserPublicProfileTable)
-    .where(eq(UserPublicProfileTable.clerkUserId, clerkUserId))
-    .limit(1);
-
-  return createdProfiles[0] ?? { clerkUserId, publicSlug };
+  return profiles[0] ?? null;
 }

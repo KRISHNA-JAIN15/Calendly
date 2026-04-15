@@ -4,7 +4,6 @@ import { db } from "@/db/db";
 import { EventTable } from "@/db/schema";
 import { EventForm } from "@/components/Forms/EventForm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ensureUserPublicProfile } from "@/lib/user-public-profile";
 
 async function createEvent(formData: FormData) {
 	"use server";
@@ -25,8 +24,6 @@ async function createEvent(formData: FormData) {
 	if (!name || !slug || !Number.isFinite(durationInMinutes) || durationInMinutes <= 0) {
 		return;
 	}
-
-	await ensureUserPublicProfile(userId);
 
 	await db.insert(EventTable).values({
 		name,

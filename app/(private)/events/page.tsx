@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { DeleteEventAlert } from "@/components/events/delete-event-alert";
 import { db } from "@/db/db";
 import { EventTable } from "@/db/schema";
-import { ensureUserPublicProfile } from "@/lib/user-public-profile";
+import { getUserPublicProfile } from "@/lib/user-public-profile";
 
 async function toggleEventActive(formData: FormData) {
 	"use server";
@@ -58,7 +58,7 @@ export default async function EventsPage() {
 		return null;
 	}
 
-	const userProfile = await ensureUserPublicProfile(userId);
+	const userProfile = await getUserPublicProfile(userId);
 
 	const events = await db
 		.select({
@@ -115,7 +115,7 @@ export default async function EventsPage() {
 									</form>
 								</div>
 								<CardDescription>
-									/{userProfile.publicSlug}/{event.slug}
+									/{userProfile?.publicSlug ?? "your-slug"}/{event.slug}
 								</CardDescription>
 							</CardHeader>
 							<CardContent className="space-y-2">
