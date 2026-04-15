@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { and, desc, eq } from "drizzle-orm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeleteEventAlert } from "@/components/events/delete-event-alert";
+import { ProfileShareLink } from "@/components/events/profile-share-link";
 import { db } from "@/db/db";
 import { EventTable } from "@/db/schema";
 import { getUserPublicProfile } from "@/lib/user-public-profile";
@@ -59,6 +61,15 @@ export default async function EventsPage() {
 	}
 
 	const userProfile = await getUserPublicProfile(userId);
+	const usernamePath = `/${userProfile?.publicSlug ?? "your-slug"}`;
+	const requestHeaders = await headers();
+	const envAppUrl = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/+$/, "");
+	const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+	const protocol =
+		requestHeaders.get("x-forwarded-proto") ??
+		(host?.startsWith("localhost") || host?.startsWith("127.0.0.1") ? "http" : "https");
+	const origin = envAppUrl || (host ? `${protocol}://${host}` : "");
+	const profileShareLink = origin ? `${origin}${usernamePath}` : usernamePath;
 
 	const events = await db
 		.select({
@@ -75,11 +86,14 @@ export default async function EventsPage() {
 
 	return (
 		<div className="space-y-6">
-			<div className="flex items-center justify-between">
-				<h1 className="text-2xl font-semibold">Events</h1>
-				<Button asChild>
-					<Link href="/events/new">New event</Link>
-				</Button>
+			<div className="space-y-4">
+				<div className="flex items-center justify-between">
+					<h1 className="text-2xl font-semibold">Events</h1>
+					<Button asChild>
+						<Link href="/events/new">New event</Link>
+					</Button>
+				</div>
+				<ProfileShareLink shareLink={profileShareLink} />
 			</div>
 
 			{events.length === 0 ? (
@@ -114,15 +128,12 @@ export default async function EventsPage() {
 										</button>
 									</form>
 								</div>
-								<CardDescription>
-									/{userProfile?.publicSlug ?? "your-slug"}/{event.slug}
-								</CardDescription>
+								<CardDescription>{event.durationInMinutes} min</CardDescription>
 							</CardHeader>
 							<CardContent className="space-y-2">
 								<p className="text-sm text-muted-foreground">
 									{event.description || "No description"}
 								</p>
-								<p className="text-sm">Duration: {event.durationInMinutes} min</p>
 								<div className="flex items-center gap-2 pt-2">
 									<Button asChild size="sm" variant="outline">
 										<Link href={`/events/${event.id}/edit`}>Edit</Link>
