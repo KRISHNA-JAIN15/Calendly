@@ -12,11 +12,11 @@ export default function PublicProfileNotFound() {
             This username does not exist, or the booking page is no longer available.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex items-center gap-2">
-          <Button asChild>
+        <CardContent className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+          <Button asChild className="w-full sm:w-auto">
             <Link href="/">Go to home</Link>
           </Button>
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" className="w-full sm:w-auto">
             <Link href="/sign-up">Create your own page</Link>
           </Button>
         </CardContent>

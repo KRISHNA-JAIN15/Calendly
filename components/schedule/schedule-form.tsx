@@ -212,14 +212,14 @@ export function ScheduleForm({ action, defaultTimezone, timezoneOptions, initial
                   key={day}
                   className="space-y-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
                 >
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-sm font-medium">{day}</p>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
                       onClick={() => addSlot(day)}
-                      className="border-cyan-300 text-cyan-700 hover:bg-cyan-50 dark:border-cyan-700 dark:text-cyan-300 dark:hover:bg-cyan-900/40"
+                      className="w-full border-cyan-300 text-cyan-700 hover:bg-cyan-50 sm:w-auto dark:border-cyan-700 dark:text-cyan-300 dark:hover:bg-cyan-900/40"
                     >
                       Add slot
                     </Button>
@@ -260,7 +260,7 @@ export function ScheduleForm({ action, defaultTimezone, timezoneOptions, initial
                             variant="ghost"
                             size="sm"
                             onClick={() => removeSlot(day, slot.id)}
-                            className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
+                            className="w-full text-red-600 hover:bg-red-50 hover:text-red-700 sm:w-auto sm:justify-self-start dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
                           >
                             Remove
                           </Button>
@@ -275,11 +275,11 @@ export function ScheduleForm({ action, defaultTimezone, timezoneOptions, initial
         </CardContent>
       </Card>
 
-      <div className="flex justify-end mb-16">
+      <div className="mb-16 flex justify-stretch sm:justify-end">
         <Button
           type="submit"
           disabled={isPending}
-          className="rounded-lg border border-emerald-700 bg-emerald-600 text-white hover:bg-emerald-700 dark:border-emerald-400 dark:bg-emerald-500 dark:text-zinc-950 dark:hover:bg-emerald-400"
+          className="w-full rounded-lg border border-emerald-700 bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto dark:border-emerald-400 dark:bg-emerald-500 dark:text-zinc-950 dark:hover:bg-emerald-400"
         >
           {isPending ? "Saving..." : "Save schedule"}
         </Button>

@@ -98,8 +98,8 @@ export default async function EventsPage() {
 							Manage your event types and keep booking links up to date.
 						</p>
 					</div>
-					<Button asChild>
-						<Link href="/events/new" className="rounded-lg border border-sky-700 bg-sky-600 px-3 py-2 text-white transition-colors hover:bg-sky-700 dark:border-sky-400 dark:bg-sky-500 dark:text-zinc-950 dark:hover:bg-sky-400">
+					<Button asChild className="w-full sm:w-auto">
+						<Link href="/events/new" className="w-full rounded-lg border border-sky-700 bg-sky-600 px-3 py-2 text-center text-white transition-colors hover:bg-sky-700 dark:border-sky-400 dark:bg-sky-500 dark:text-zinc-950 dark:hover:bg-sky-400">
 							New event
 						</Link>
 					</Button>
@@ -164,7 +164,7 @@ export default async function EventsPage() {
 										</form>
 									</div>
 
-									<p className="rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 font-mono text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+									<p className="break-all rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 font-mono text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
 										{eventPublicPath}
 									</p>
 								</CardHeader>
@@ -172,7 +172,7 @@ export default async function EventsPage() {
 									<p className="text-sm text-muted-foreground">
 										{event.description || "No description"}
 									</p>
-									<div className="flex items-center gap-2 pt-1">
+									<div className="flex flex-wrap items-center gap-2 pt-1">
 										<Button
 											asChild
 											size="sm"

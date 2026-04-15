@@ -26,9 +26,9 @@ export function ProfileShareLink({ shareLink }: ProfileShareLinkProps) {
   return (
     <div className="space-y-2 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
       <p className="text-sm font-medium">Share your booking page</p>
-      <div className="flex items-center gap-2">
-        <Input readOnly value={shareLink} className="font-mono text-xs md:text-sm" />
-        <Button type="button" variant="outline" onClick={copyShareLink}>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Input readOnly value={shareLink} className="min-w-0 flex-1 font-mono text-xs md:text-sm" />
+        <Button type="button" variant="outline" onClick={copyShareLink} className="w-full sm:w-auto">
           {copied ? "Copied" : "Copy"}
         </Button>
       </div>

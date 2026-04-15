@@ -158,7 +158,7 @@ export default async function SchedulePage({ searchParams }: SchedulePageProps) 
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6">
+    <div className="mx-auto w-full max-w-3xl space-y-6 px-4 sm:px-6">
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold">Schedule</h1>
         <p className="text-sm text-muted-foreground">

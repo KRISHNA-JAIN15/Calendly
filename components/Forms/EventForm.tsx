@@ -190,14 +190,14 @@ export function EventForm({ action, initialValues, submitLabel = "Save event" }:
 				</label>
 			</div>
 
-			<div className="flex items-center justify-end gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-				<Button asChild variant="outline" type="button">
+			<div className="flex flex-col-reverse gap-2 border-t border-zinc-200 pt-4 sm:flex-row sm:items-center sm:justify-end dark:border-zinc-800">
+				<Button asChild variant="outline" type="button" className="w-full sm:w-auto">
 					<Link href="/events">Cancel</Link>
 				</Button>
 				<Button
 					type="submit"
 					disabled={isPending}
-					className="rounded-lg border border-sky-700 bg-sky-600 text-white hover:bg-sky-700 dark:border-sky-400 dark:bg-sky-500 dark:text-zinc-950 dark:hover:bg-sky-400"
+					className="w-full rounded-lg border border-sky-700 bg-sky-600 text-white hover:bg-sky-700 sm:w-auto dark:border-sky-400 dark:bg-sky-500 dark:text-zinc-950 dark:hover:bg-sky-400"
 				>
 					{isPending ? "Saving..." : submitLabel}
 				</Button>

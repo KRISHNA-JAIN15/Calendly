@@ -7,8 +7,10 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
   if (userId != null) redirect("/events")
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center">
-      {children}
+    <div className="flex min-h-screen items-center justify-center px-4 py-8">
+      <div className="w-full max-w-md sm:max-w-lg">
+        {children}
+      </div>
     </div>
   )
 }

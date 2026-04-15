@@ -243,7 +243,7 @@ export function PublicEventBooking({
         </CardContent>
       </Card>
 
-      <Card className="border-0 ring-1 ring-zinc-200/80 dark:ring-zinc-800">
+      <Card className="min-w-0 border-0 ring-1 ring-zinc-200/80 dark:ring-zinc-800">
         {step === "slot" ? (
           <>
             <CardHeader>
@@ -276,7 +276,7 @@ export function PublicEventBooking({
                   No slots are currently available for this event.
                 </div>
               ) : (
-                <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:items-start">
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
                   <div className="rounded-lg border border-zinc-200 p-2 dark:border-zinc-800">
                     <Calendar
                       mode="single"
@@ -310,7 +310,7 @@ export function PublicEventBooking({
                         No slots available for this day.
                       </p>
                     ) : (
-                      <div className="grid max-h-64 grid-cols-2 gap-2 overflow-y-auto pr-1">
+                      <div className="grid max-h-64 grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
                         {selectedSlots.map((slotIso) => {
                           const isActive = selectedStartTimeISO === slotIso;
 

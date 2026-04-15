@@ -186,19 +186,19 @@ export default async function MeetingsPage() {
           return (
             <Card key={meeting.id} className="border-zinc-200/80 dark:border-zinc-800">
               <CardHeader className="space-y-3">
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div className="space-y-1">
                     <CardTitle className="text-lg">{meeting.eventName}</CardTitle>
                     <CardDescription>{dateTime.date}</CardDescription>
                   </div>
                   <span
-                    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${meetingStatusClassName}`}
+                    className={`inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-medium ${meetingStatusClassName}`}
                   >
                     {meetingStatusLabel}
                   </span>
                 </div>
 
-                <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+                <p className="break-words rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
                   {dateTime.time}
                 </p>
               </CardHeader>
@@ -221,13 +221,13 @@ export default async function MeetingsPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-8">
+    <div className="mx-auto w-full max-w-5xl space-y-8 px-4 pb-8 sm:px-6">
       <section className="space-y-4">
         <div className="space-y-1">
-        <h1 className="text-3xl font-semibold tracking-tight">Meetings</h1>
-        <p className="text-sm text-muted-foreground">
-          View upcoming and past meetings, and cancel upcoming meetings.
-        </p>
+          <h1 className="text-3xl font-semibold tracking-tight">Meetings</h1>
+          <p className="text-sm text-muted-foreground">
+            View upcoming and past meetings, and cancel upcoming meetings.
+          </p>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
@@ -256,12 +256,12 @@ export default async function MeetingsPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-xl font-semibold tracking-tight">Upcoming meetings</h2>
+        <h2 className="text-lg font-semibold tracking-tight sm:text-xl">Upcoming meetings</h2>
         {renderMeetingList(upcomingMeetings, "upcoming")}
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-xl font-semibold tracking-tight">Past meetings</h2>
+        <h2 className="text-lg font-semibold tracking-tight sm:text-xl">Past meetings</h2>
         {renderMeetingList(pastMeetings, "past")}
       </section>
     </div>
