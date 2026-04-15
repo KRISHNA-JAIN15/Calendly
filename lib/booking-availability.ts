@@ -150,8 +150,15 @@ async function getGoogleEventTimesSafe(
 ): Promise<EventInterval[]> {
   try {
     return await getCalendarEventTimes(clerkUserId, { start, end });
-  } catch {
-    return [];
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+
+    if (message.includes("Google account is not connected")) {
+      return [];
+    }
+
+    // If we cannot verify busy windows, block the entire range to avoid double-booking.
+    return [{ start, end }];
   }
 }
 

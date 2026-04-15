@@ -82,7 +82,10 @@ export default async function PublicEventPage({
     buildCandidateTimesForDate(dateKey, schedule.timezone, 15)
   );
 
-  const validTimes = await getValidTimesFromSchedule(candidateTimes, {
+  const now = new Date();
+  const futureCandidateTimes = candidateTimes.filter((time) => time.getTime() > now.getTime());
+
+  const validTimes = await getValidTimesFromSchedule(futureCandidateTimes, {
     clerkUserId: profile.clerkUserId,
     durationInMinutes: event.durationInMinutes,
   });

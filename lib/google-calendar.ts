@@ -2,7 +2,7 @@ import "server-only";
 
 import { clerkClient } from "@clerk/nextjs/server";
 import { google } from "googleapis";
-import { addMinutes, endOfDay, startOfDay } from "date-fns";
+import { addMinutes } from "date-fns";
 
 type CalendarEventTime = {
   start: Date;
@@ -35,38 +35,118 @@ export async function getCalendarEventTimes(
   { start, end }: CalendarRange
 ): Promise<CalendarEventTime[]> {
   const oauthClient = await getOAuthClient(clerkUserId);
+  const calendarClient = google.calendar("v3");
+  const calendarIds = await getCalendarIdsForFreeBusy(calendarClient, oauthClient);
+  const uniqueBusyIntervals = new Map<string, CalendarEventTime>();
 
-  const events = await google.calendar("v3").events.list({
-    calendarId: "primary",
-    eventTypes: ["default"],
-    singleEvents: true,
-    timeMin: start.toISOString(),
-    timeMax: end.toISOString(),
-    maxResults: 2500,
-    auth: oauthClient,
-  });
+  for (const calendarIdChunk of chunkArray(calendarIds, 50)) {
+    let freeBusy;
 
-  return (
-    events.data.items
-      ?.map((event) => {
-        if (event.start?.date && event.end?.date) {
-          return {
-            start: startOfDay(new Date(event.start.date)),
-            end: endOfDay(new Date(event.end.date)),
-          };
+    try {
+      freeBusy = await calendarClient.freebusy.query({
+        auth: oauthClient,
+        requestBody: {
+          timeMin: start.toISOString(),
+          timeMax: end.toISOString(),
+          items: calendarIdChunk.map((calendarId) => ({ id: calendarId })),
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message.toLowerCase() : "";
+
+      if (message.includes("insufficient") || message.includes("forbidden")) {
+        throw new Error(
+          "Missing Google Calendar FreeBusy permission (https://www.googleapis.com/auth/calendar.freebusy)."
+        );
+      }
+
+      throw error;
+    }
+
+    const calendars = freeBusy.data.calendars ?? {};
+
+    for (const calendar of Object.values(calendars)) {
+      for (const busyInterval of calendar.busy ?? []) {
+        if (!busyInterval.start || !busyInterval.end) {
+          continue;
         }
 
-        if (event.start?.dateTime && event.end?.dateTime) {
-          return {
-            start: new Date(event.start.dateTime),
-            end: new Date(event.end.dateTime),
-          };
+        const busyStart = new Date(busyInterval.start);
+        const busyEnd = new Date(busyInterval.end);
+
+        if (
+          Number.isNaN(busyStart.getTime()) ||
+          Number.isNaN(busyEnd.getTime()) ||
+          busyStart >= busyEnd
+        ) {
+          continue;
         }
 
-        return null;
-      })
-      .filter((date): date is CalendarEventTime => date != null) ?? []
+        const intervalKey = `${busyStart.toISOString()}_${busyEnd.toISOString()}`;
+        uniqueBusyIntervals.set(intervalKey, {
+          start: busyStart,
+          end: busyEnd,
+        });
+      }
+    }
+  }
+
+  return Array.from(uniqueBusyIntervals.values()).sort(
+    (left, right) => left.start.getTime() - right.start.getTime()
   );
+}
+
+async function getCalendarIdsForFreeBusy(
+  calendarClient: ReturnType<typeof google.calendar>,
+  oauthClient: Awaited<ReturnType<typeof getOAuthClient>>
+) {
+  const calendarIds = new Set<string>();
+  let pageToken: string | undefined;
+
+  try {
+    do {
+      const calendarList = await calendarClient.calendarList.list({
+        auth: oauthClient,
+        pageToken,
+        maxResults: 250,
+        minAccessRole: "reader",
+        showHidden: false,
+      });
+
+      for (const calendar of calendarList.data.items ?? []) {
+        const calendarId = calendar.id;
+        if (!calendarId) {
+          continue;
+        }
+
+        if (calendar.selected === false) {
+          continue;
+        }
+
+        calendarIds.add(calendarId);
+      }
+
+      pageToken = calendarList.data.nextPageToken ?? undefined;
+    } while (pageToken);
+  } catch {
+    return ["primary"];
+  }
+
+  if (calendarIds.size === 0) {
+    return ["primary"];
+  }
+
+  return Array.from(calendarIds);
+}
+
+function chunkArray<T>(items: T[], chunkSize: number) {
+  const chunks: T[][] = [];
+
+  for (let index = 0; index < items.length; index += chunkSize) {
+    chunks.push(items.slice(index, index + chunkSize));
+  }
+
+  return chunks;
 }
 
 export async function createCalendarEvent({

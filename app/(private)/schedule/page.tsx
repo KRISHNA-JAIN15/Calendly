@@ -6,43 +6,11 @@ import { ScheduleForm } from "@/components/schedule/schedule-form";
 import { db } from "@/db/db";
 import { DAYS_OF_WEEK_IN_ORDER } from "@/data/constants";
 import { ScheduleAvailabilityTable, ScheduleTable } from "@/db/schema";
-import { ensureScheduleWithDefaults } from "@/lib/schedule-defaults";
-
-const TIMEZONE_OPTIONS = [
-  "Asia/Kolkata",
-  "UTC",
-  "Europe/London",
-  "America/New_York",
-  "America/Los_Angeles",
-  "Australia/Sydney",
-];
-
-function getGmtOffsetLabel(timezone: string) {
-  try {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: timezone,
-      timeZoneName: "shortOffset",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    }).formatToParts(new Date());
-
-    const offset = parts.find((part) => part.type === "timeZoneName")?.value;
-    if (!offset) {
-      return "GMT";
-    }
-
-    return offset.replace("UTC", "GMT");
-  } catch {
-    return "GMT";
-  }
-}
-
-function formatTimezoneLabel(timezone: string) {
-  const gmtOffset = getGmtOffsetLabel(timezone);
-  const readableTimezone = timezone.replace(/_/g, " ");
-  return `${readableTimezone} (${gmtOffset})`;
-}
+import {
+  DEFAULT_SCHEDULE_TIMEZONE,
+  ensureScheduleWithDefaults,
+} from "@/lib/schedule-defaults";
+import { getTimezoneOptions, isValidTimezone } from "@/lib/timezones";
 
 type SchedulePageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -70,14 +38,12 @@ export default async function SchedulePage({ searchParams }: SchedulePageProps) 
   const { schedule, availabilities: existingAvailabilities } =
     await ensureScheduleWithDefaults(userId);
 
-  const defaultTimezone = schedule?.timezone ?? "Asia/Kolkata";
-  const timezoneOptions = (TIMEZONE_OPTIONS as readonly string[]).includes(defaultTimezone)
-    ? TIMEZONE_OPTIONS
-    : [defaultTimezone, ...TIMEZONE_OPTIONS];
-  const timezoneOptionLabels = timezoneOptions.map((timezone) => ({
-    value: timezone,
-    label: formatTimezoneLabel(timezone),
-  }));
+  const defaultTimezone = isValidTimezone(schedule?.timezone ?? "")
+    ? schedule.timezone
+    : DEFAULT_SCHEDULE_TIMEZONE;
+  const timezoneOptionLabels = getTimezoneOptions([defaultTimezone], {
+    includeAll: true,
+  });
 
   async function saveSchedule(formData: FormData): Promise<SaveScheduleResult> {
     "use server";
@@ -92,8 +58,8 @@ export default async function SchedulePage({ searchParams }: SchedulePageProps) 
     const slotStarts = formData.getAll("slotStart").map((value) => String(value));
     const slotEnds = formData.getAll("slotEnd").map((value) => String(value));
 
-    if (!timezone) {
-      return { error: "Please select a timezone." };
+    if (!timezone || !isValidTimezone(timezone)) {
+      return { error: "Please select a valid timezone." };
     }
 
     if (slotDays.length === 0) {

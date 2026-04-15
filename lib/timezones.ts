@@ -15,13 +15,38 @@ const DEFAULT_TIMEZONE_OPTIONS = [
   "Australia/Sydney",
 ] as const;
 
+type IntlWithSupportedValues = typeof Intl & {
+  supportedValuesOf?: (key: "timeZone") => string[];
+};
+
+const SUPPORTED_TIMEZONE_OPTIONS = (
+  (Intl as IntlWithSupportedValues).supportedValuesOf?.("timeZone") ??
+  [...DEFAULT_TIMEZONE_OPTIONS]
+).filter((timezone) => isValidTimezone(timezone));
+
 type TimezoneOption = {
   value: string;
   label: string;
 };
 
-export function getTimezoneOptions(preferredTimezones: string[] = []): TimezoneOption[] {
-  const merged = Array.from(new Set([...preferredTimezones, ...DEFAULT_TIMEZONE_OPTIONS]));
+type GetTimezoneOptionsOptions = {
+  includeAll?: boolean;
+};
+
+export function getTimezoneOptions(
+  preferredTimezones: string[] = [],
+  options: GetTimezoneOptionsOptions = {}
+): TimezoneOption[] {
+  const baseOptions = options.includeAll
+    ? SUPPORTED_TIMEZONE_OPTIONS
+    : DEFAULT_TIMEZONE_OPTIONS;
+
+  const merged = Array.from(
+    new Set([
+      ...preferredTimezones.filter((timezone) => isValidTimezone(timezone)),
+      ...baseOptions,
+    ])
+  );
 
   return merged.map((timezone) => ({
     value: timezone,
@@ -33,6 +58,15 @@ export function formatTimezoneLabel(timezone: string) {
   const gmtOffset = getGmtOffsetLabel(timezone);
   const readableTimezone = timezone.replace(/_/g, " ");
   return `${readableTimezone} (${gmtOffset})`;
+}
+
+export function isValidTimezone(timezone: string) {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: timezone }).format(new Date());
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function getGmtOffsetLabel(timezone: string) {
